@@ -22,6 +22,8 @@ const Projects = ({ doneOnly = false }) => {
     const [projects, setProjects] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('ALL'); // ALL, DONE, REAL_LOSS
+    const [search, setSearch] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
     const navigate = useNavigate();
 
     const sensors = useSensors(
@@ -31,11 +33,24 @@ const Projects = ({ doneOnly = false }) => {
         })
     );
 
+    // Debounce search
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(search);
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [search]);
+
     useEffect(() => {
         const fetchProjects = async () => {
             try {
                 setLoading(true);
-                const res = await axios.get(`http://localhost:5000/api/projects?is_done=${doneOnly}`);
+                const res = await axios.get(`http://localhost:5000/api/projects`, {
+                    params: {
+                        is_done: doneOnly,
+                        search: debouncedSearch
+                    }
+                });
                 setProjects(res.data);
             } catch (error) {
                 console.error("Error fetching projects", error);
@@ -44,7 +59,7 @@ const Projects = ({ doneOnly = false }) => {
             }
         };
         fetchProjects();
-    }, [doneOnly]);
+    }, [doneOnly, debouncedSearch]);
 
     const handleDragEnd = async (event) => {
         const { active, over } = event;
@@ -74,9 +89,31 @@ const Projects = ({ doneOnly = false }) => {
 
     return (
         <div className="max-w-7xl mx-auto">
-            <h1 className="text-3xl font-bold text-white mb-6">
-                {doneOnly ? 'Project Status (Done)' : 'Projects (In Progress)'}
-            </h1>
+            <div className="flex justify-between items-center mb-6">
+                <h1 className="text-3xl font-bold text-white">
+                    {doneOnly ? 'Project Status (Done)' : 'Projects (In Progress)'}
+                </h1>
+
+                {/* Search Input */}
+                <div className="relative">
+                    <input
+                        type="text"
+                        placeholder="Search projects..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        className="bg-gray-800 text-white border border-gray-700 rounded-lg py-2 px-4 pl-10 focus:outline-none focus:ring-2 focus:ring-primary w-64"
+                    />
+                    <svg
+                        className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        xmlns="http://www.w3.org/2000/svg"
+                    >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                </div>
+            </div>
 
             <div className="bg-gray-900/50 rounded-xl border border-white/10 overflow-hidden">
                 {!doneOnly ? (
