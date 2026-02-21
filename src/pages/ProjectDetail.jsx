@@ -28,7 +28,7 @@ const ProjectDetail = () => {
 
     const fetchProject = async () => {
         try {
-            const res = await axios.get(`http://localhost:5000/api/projects/${id}`);
+            const res = await axios.get(`${import.meta.env.VITE_API_URL}/projects/${id}`);
             setProject(res.data);
             setProjectLink(res.data.link || '');
         } catch (error) {
@@ -52,7 +52,7 @@ const ProjectDetail = () => {
 
     const handleUpdateProjectLink = async () => {
         try {
-            await axios.put(`http://localhost:5000/api/projects/${id}`, { link: projectLink });
+            await axios.put(`${import.meta.env.VITE_API_URL}/projects/${id}`, { link: projectLink });
             setEditingLink(false);
             fetchProject();
         } catch (error) {
@@ -63,7 +63,7 @@ const ProjectDetail = () => {
     const handleAddTask = async (e) => {
         e.preventDefault();
         try {
-            await axios.post('http://localhost:5000/api/projects/subtasks', {
+            await axios.post(`${import.meta.env.VITE_API_URL}/projects/subtasks`, {
                 projectId: id,
                 ...taskForm
             });
@@ -77,7 +77,7 @@ const ProjectDetail = () => {
 
     const updateProgress = async (taskId, newProgress) => {
         try {
-            await axios.put(`http://localhost:5000/api/projects/subtasks/${taskId}`, {
+            await axios.put(`${import.meta.env.VITE_API_URL}/projects/subtasks/${taskId}`, {
                 progress: newProgress
             });
             fetchProject();
@@ -89,7 +89,7 @@ const ProjectDetail = () => {
     const deleteTask = async (taskId) => {
         if (!confirm('Delete this task?')) return;
         try {
-            await axios.delete(`http://localhost:5000/api/projects/subtasks/${taskId}`);
+            await axios.delete(`${import.meta.env.VITE_API_URL}/projects/subtasks/${taskId}`);
             fetchProject();
         } catch (error) {
             alert('Error deleting task');

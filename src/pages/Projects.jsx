@@ -45,7 +45,7 @@ const Projects = ({ doneOnly = false }) => {
         const fetchProjects = async () => {
             try {
                 setLoading(true);
-                const res = await axios.get(`http://localhost:5000/api/projects`, {
+                const res = await axios.get(`${import.meta.env.VITE_API_URL}/projects`, {
                     params: {
                         is_done: doneOnly,
                         search: debouncedSearch
@@ -75,7 +75,7 @@ const Projects = ({ doneOnly = false }) => {
                 // Extract IDs in new order
                 const orderedIds = newOrder.map(p => p.id);
 
-                axios.put('http://localhost:5000/api/projects/reorder', { orderedIds })
+                axios.put(`${import.meta.env.VITE_API_URL}/projects/reorder`, { orderedIds })
                     .catch(err => console.error("Failed to save order", err));
 
                 return newOrder;

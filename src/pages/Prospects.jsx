@@ -128,7 +128,7 @@ const Prospects = () => {
 
     const fetchProspects = async () => {
         try {
-            const res = await axios.get('http://localhost:5000/api/prospects');
+            const res = await axios.get(`${import.meta.env.VITE_API_URL}/prospects`);
             setProspects(res.data);
         } catch (error) {
             console.error("Error fetching prospects", error);
@@ -144,7 +144,7 @@ const Prospects = () => {
     const handleCreate = async (e) => {
         e.preventDefault();
         try {
-            await axios.post('http://localhost:5000/api/prospects', formData);
+            await axios.post(`${import.meta.env.VITE_API_URL}/prospects`, formData);
             setShowModal(false);
             fetchProspects();
             setFormData({ no_project: '', name_project: '', client_name: '', contact_name: '', status: 'LEAD' });
@@ -178,7 +178,7 @@ const Prospects = () => {
 
             // API Call
             try {
-                await axios.put(`http://localhost:5000/api/prospects/${prospectId}`, { status: newStatus });
+                await axios.put(`${import.meta.env.VITE_API_URL}/prospects/${prospectId}`, { status: newStatus });
                 // Should verify/refetch if WON to show project link? 
                 // Ideally yes, but for now simple update is fine.
             } catch (error) {
@@ -195,7 +195,7 @@ const Prospects = () => {
         if (!confirm(`Move ${prospect.name_project} to Real Loss? This will create a 'Done' project for it.`)) return;
 
         try {
-            await axios.put(`http://localhost:5000/api/prospects/${prospect.no_project}`, { status: 'REAL_LOSS' });
+            await axios.put(`${import.meta.env.VITE_API_URL}/prospects/${prospect.no_project}`, { status: 'REAL_LOSS' });
             fetchProspects(); // Refresh to remove from list (since REAL_LOSS isn't in STATUSES column)
         } catch (error) {
             console.error("Update failed:", error);
