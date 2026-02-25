@@ -7,6 +7,8 @@ import Dashboard from './pages/Dashboard';
 import Prospects from './pages/Prospects';
 import Projects from './pages/Projects';
 import ProjectDetail from './pages/ProjectDetail';
+import SubtaskDetail from './pages/SubtaskDetail';
+import ProspectDetail from './pages/ProspectDetail';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -27,10 +29,11 @@ function App() {
             <Route index element={<Navigate to="/dashboard" />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="prospects" element={<Prospects />} />
-            <Route path="prospects" element={<Prospects />} />
+            <Route path="prospects/:id" element={<ProspectDetail />} />
             <Route path="projects" element={<Projects doneOnly={false} />} />
             <Route path="project-status" element={<Projects doneOnly={true} />} />
             <Route path="projects/:id" element={<ProjectDetail />} />
+            <Route path="projects/:projectId/subtasks/:subtaskId" element={<SubtaskDetail />} />
             <Route path="admin" element={<div className="text-white">Admin Module (Coming Soon)</div>} />
           </Route>
         </Routes>

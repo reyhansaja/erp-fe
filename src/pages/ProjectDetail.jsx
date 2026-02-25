@@ -7,6 +7,7 @@ import { Input } from '../components/ui/Input';
 import { ArrowLeft, CheckCircle, Circle, Plus, Trash2, ExternalLink, Edit2, Save, X } from 'lucide-react';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
+import { cn } from '../lib/utils';
 
 const ProjectDetail = () => {
     const { id } = useParams();
@@ -60,6 +61,16 @@ const ProjectDetail = () => {
         }
     };
 
+    const handleToggleStatus = async () => {
+        try {
+            const newStatus = !project.is_done;
+            await axios.put(`http://localhost:5000/api/projects/${id}`, { is_done: newStatus });
+            fetchProject();
+        } catch (error) {
+            alert('Error updating project status');
+        }
+    };
+
     const handleAddTask = async (e) => {
         e.preventDefault();
         try {
@@ -104,10 +115,10 @@ const ProjectDetail = () => {
                 <ArrowLeft size={16} /> Back to Projects
             </Button>
 
-            <div className="flex flex-col md:flex-row gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Project Info Side */}
-                <div className="w-full md:w-1/3">
-                    <Card className="sticky top-8">
+                <div className="lg:col-span-1">
+                    <Card className="sticky top-8 bg-white/5 border-white/10 backdrop-blur-xl">
                         <h1 className="text-2xl font-bold text-white mb-2">{project.prospect.name_project}</h1>
                         <p className="text-gray-400 mb-4">{project.prospect.client_name}</p>
 
@@ -154,11 +165,27 @@ const ProjectDetail = () => {
                         </div>
 
                         <div className="space-y-4">
-                            <div className="bg-black/40 p-3 rounded-lg">
-                                <span className="text-xs text-gray-500 block">Status</span>
-                                <span className={`font-bold ${project.is_done ? 'text-success' : 'text-primary'}`}>
-                                    {project.is_done ? 'COMPLETED' : 'IN PROGRESS'}
-                                </span>
+                            <div className="bg-black/40 p-4 rounded-lg flex justify-between items-center group">
+                                <div>
+                                    <span className="text-xs text-gray-500 block uppercase font-bold tracking-wider">Status</span>
+                                    <span className={`font-bold text-lg ${project.is_done ? 'text-success' : 'text-primary'}`}>
+                                        {project.is_done ? 'COMPLETED' : 'IN PROGRESS'}
+                                    </span>
+                                </div>
+                                {['Manager', 'Superadmin'].includes(user?.role) && (
+                                    <Button
+                                        size="sm"
+                                        variant={project.is_done ? "outline" : "primary"}
+                                        onClick={handleToggleStatus}
+                                        className="gap-2 h-9 px-4"
+                                    >
+                                        {project.is_done ? (
+                                            <>Reopen Project</>
+                                        ) : (
+                                            <>Complete Project</>
+                                        )}
+                                    </Button>
+                                )}
                             </div>
                             <div>
                                 <div className="flex justify-between text-sm mb-1">
@@ -174,7 +201,7 @@ const ProjectDetail = () => {
                 </div>
 
                 {/* Subtasks List */}
-                <div className="w-full md:w-2/3">
+                <div className="lg:col-span-2">
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="text-xl font-bold">Subtasks</h2>
                         {!project.is_done && (
@@ -206,45 +233,84 @@ const ProjectDetail = () => {
                             const isOverdue = new Date(task.deadline) < new Date() && task.progress < 100;
 
                             return (
-                                <Card key={task.id} className="group relative overflow-hidden">
+                                <Card
+                                    key={task.id}
+                                    className="group relative overflow-hidden cursor-pointer hover:bg-white/10 transition-all duration-300"
+                                    onClick={() => navigate(`/projects/${id}/subtasks/${task.id}`)}
+                                >
                                     {/* Detailed Progress Bar as background tint? No, maybe simpler UI */}
-                                    <div className="flex justify-between items-start gap-4">
+                                    <div className="flex justify-between items-start gap-4 p-4">
                                         <div className="flex-1">
                                             <div className="flex items-center gap-2 mb-1">
-                                                <h3 className="font-bold text-lg text-white">{task.name}</h3>
+                                                <h3 className="font-bold text-lg text-white group-hover:text-primary transition-colors">{task.name}</h3>
                                                 {task.progress === 100 && <CheckCircle size={16} className="text-success" />}
                                             </div>
-                                            <p className="text-sm text-gray-400 mb-2">{task.description || 'No description'}</p>
+                                            <p className="text-sm text-gray-400 mb-2 line-clamp-2">{task.description || 'No description'}</p>
 
                                             <div className="flex items-center gap-4 text-xs">
                                                 <span className="text-gray-500">By: {task.createdBy?.username || 'Unknown'}</span>
                                                 <span className={isOverdue ? 'text-danger' : 'text-primary'}>Deadline: {timeLeft}</span>
                                                 {task.link && (
-                                                    <a href={task.link.startsWith('http') ? task.link : `https://${task.link}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-secondary hover:underline">
+                                                    <a
+                                                        href={task.link.startsWith('http') ? task.link : `https://${task.link}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="flex items-center gap-1 text-secondary hover:underline"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    >
                                                         <ExternalLink size={12} /> Link
                                                     </a>
                                                 )}
                                             </div>
                                         </div>
 
-                                        <div className="w-32 flex flex-col items-end gap-2">
-                                            <div className="text-right">
-                                                <span className="text-xs text-gray-400 block">Progress</span>
-                                                <span className={`text-lg font-bold ${task.progress === 100 ? 'text-success' : 'text-white'}`}>{task.progress}%</span>
+                                        <div className="w-full lg:w-48 flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Progress Status</span>
+                                                <span className={cn(
+                                                    "text-xs font-bold px-2 py-0.5 rounded",
+                                                    task.progress === 100 ? "text-success bg-success/10" : "text-primary bg-primary/10"
+                                                )}>
+                                                    {task.progress === 100 ? 'DONE' :
+                                                        task.progress === 80 ? 'IFC' :
+                                                            task.progress === 60 ? 'IFA' :
+                                                                task.progress === 40 ? 'IFR' :
+                                                                    task.progress === 20 ? 'IFI' : 'NEW'}
+                                                </span>
                                             </div>
-                                            {/* Slider for Progress */}
-                                            <input
-                                                type="range"
-                                                min="0"
-                                                max="100"
-                                                value={task.progress}
-                                                onChange={(e) => updateProgress(task.id, e.target.value)}
-                                                disabled={project.is_done}
-                                                className="w-full accent-primary cursor-pointer"
-                                            />
+
+                                            {/* Status Selector Grid */}
+                                            <div className="grid grid-cols-5 gap-1">
+                                                {[
+                                                    { label: 'IFI', val: 20 },
+                                                    { label: 'IFR', val: 40 },
+                                                    { label: 'IFA', val: 60 },
+                                                    { label: 'IFC', val: 80 },
+                                                    { label: 'DONE', val: 100 }
+                                                ].map((s) => (
+                                                    <button
+                                                        key={s.label}
+                                                        onClick={() => updateProgress(task.id, s.val)}
+                                                        disabled={project.is_done}
+                                                        className={cn(
+                                                            "h-6 text-[10px] font-bold rounded transition-all",
+                                                            task.progress === s.val
+                                                                ? "bg-primary text-white shadow-[0_0_10px_rgba(var(--primary-rgb),0.5)]"
+                                                                : "bg-white/5 text-gray-500 hover:bg-white/10 hover:text-gray-300"
+                                                        )}
+                                                        title={s.label}
+                                                    >
+                                                        {s.label[0]}{s.label.slice(1).toLowerCase()}
+                                                    </button>
+                                                ))}
+                                            </div>
+
                                             {['Manager', 'Superadmin'].includes(user?.role) && (
-                                                <button onClick={() => deleteTask(task.id)} className="text-gray-600 hover:text-danger p-1">
-                                                    <Trash2 size={16} />
+                                                <button
+                                                    onClick={() => deleteTask(task.id)}
+                                                    className="self-end text-gray-600 hover:text-danger p-1 transition-colors"
+                                                >
+                                                    <Trash2 size={14} />
                                                 </button>
                                             )}
                                         </div>

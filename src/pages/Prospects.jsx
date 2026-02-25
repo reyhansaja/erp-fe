@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
-import { Plus, MoreHorizontal } from 'lucide-react';
+import { Plus, MoreHorizontal, GripVertical } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../lib/utils';
 
@@ -23,7 +24,7 @@ const KanbanColumn = ({ status, children }) => {
     return (
         <div
             ref={setNodeRef}
-            className="w-80 flex flex-col bg-white/5 rounded-xl p-4 border border-white/10"
+            className="w-[calc(100vw-3rem)] md:w-80 flex flex-col bg-white/5 rounded-2xl p-4 border border-white/10 shrink-0"
         >
             <div className="flex justify-between items-center mb-4">
                 <h3 className={cn("font-bold",
@@ -42,6 +43,7 @@ const KanbanColumn = ({ status, children }) => {
 
 // Draggable Card Component
 const DraggableProspectCard = ({ prospect, onMoveToRealLoss }) => {
+    const navigate = useNavigate();
     const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
         id: prospect.no_project,
         data: { ...prospect },
@@ -55,42 +57,57 @@ const DraggableProspectCard = ({ prospect, onMoveToRealLoss }) => {
 
     return (
         <div ref={setNodeRef} style={style} className="touch-none relative group">
-            <Card className={cn(
-                "p-4 cursor-grab active:cursor-grabbing hover:bg-white/10 relative",
-                isDragging && "opacity-50 ring-2 ring-primary"
-            )}>
-                <div {...listeners} {...attributes}>
-                    <div className="flex justify-between items-start mb-2">
-                        <span className="text-xs text-gray-500 font-mono">{prospect.no_project}</span>
-                        {prospect.status === 'LOSS' && (
-                            <div className="relative" onPointerDown={e => e.stopPropagation()}>
+            <div
+                onClick={() => navigate(`/prospects/${prospect.no_project}`)}
+                className={cn(
+                    "flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 cursor-pointer transition-colors relative",
+                    isDragging && "opacity-50 ring-1 ring-primary/30 bg-white/5"
+                )}
+            >
+                {/* Drag Handle */}
+                <div
+                    {...listeners}
+                    {...attributes}
+                    className="cursor-grab active:cursor-grabbing text-gray-600 hover:text-gray-400 p-1"
+                >
+                    <GripVertical size={18} />
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                    <h4 className="font-bold text-white text-base truncate leading-tight">
+                        {prospect.name_project}
+                    </h4>
+                    <p className="text-xs font-mono text-gray-500/70 mt-0.5 uppercase tracking-wider">
+                        {prospect.no_project}
+                    </p>
+                </div>
+
+                {/* Optional Menu for LOSS status */}
+                {prospect.status === 'LOSS' && (
+                    <div className="relative" onPointerDown={e => e.stopPropagation()}>
+                        <button
+                            onClick={() => setShowMenu(!showMenu)}
+                            className="text-gray-600 hover:text-white p-1.5 rounded-full hover:bg-white/10"
+                        >
+                            <MoreHorizontal size={14} />
+                        </button>
+                        {showMenu && (
+                            <div className="absolute right-0 top-full mt-1 w-40 bg-gray-900 border border-white/10 rounded-lg shadow-xl z-50 overflow-hidden">
                                 <button
-                                    onClick={() => setShowMenu(!showMenu)}
-                                    className="text-gray-500 hover:text-white p-1 rounded-full hover:bg-white/10"
+                                    onClick={() => {
+                                        setShowMenu(false);
+                                        onMoveToRealLoss(prospect);
+                                    }}
+                                    className="w-full text-left px-4 py-2 text-sm text-danger hover:bg-white/5 transition-colors"
                                 >
-                                    <MoreHorizontal size={16} />
+                                    Move to Real Loss
                                 </button>
-                                {showMenu && (
-                                    <div className="absolute right-0 top-full mt-1 w-40 bg-gray-900 border border-white/10 rounded-lg shadow-xl z-50 overflow-hidden">
-                                        <button
-                                            onClick={() => {
-                                                setShowMenu(false);
-                                                onMoveToRealLoss(prospect);
-                                            }}
-                                            className="w-full text-left px-4 py-2 text-sm text-danger hover:bg-white/5 transition-colors"
-                                        >
-                                            Move to Real Loss
-                                        </button>
-                                    </div>
-                                )}
                             </div>
                         )}
                     </div>
-                    <h4 className="font-bold text-white mb-1">{prospect.name_project}</h4>
-                    <p className="text-sm text-gray-400">{prospect.client_name}</p>
-                    <p className="text-xs text-gray-500 mt-2">{prospect.contact_name}</p>
-                </div>
-            </Card>
+                )}
+            </div>
         </div>
     );
 };
@@ -99,14 +116,19 @@ const DraggableProspectCard = ({ prospect, onMoveToRealLoss }) => {
 const ProspectOverlay = ({ prospect }) => {
     if (!prospect) return null;
     return (
-        <Card className="p-4 bg-gray-800 border-primary shadow-2xl cursor-grabbing rotate-3 scale-105 opacity-90">
-            <div className="flex justify-between items-start mb-2">
-                <span className="text-xs text-gray-500 font-mono">{prospect.no_project}</span>
+        <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-800 border border-primary/50 shadow-2xl cursor-grabbing rotate-2 scale-105 opacity-90">
+            <div className="text-gray-400 p-1">
+                <GripVertical size={18} />
             </div>
-            <h4 className="font-bold text-white mb-1">{prospect.name_project}</h4>
-            <p className="text-sm text-gray-400">{prospect.client_name}</p>
-            <p className="text-xs text-gray-500 mt-2">{prospect.contact_name}</p>
-        </Card>
+            <div className="flex-1 min-w-0">
+                <h4 className="font-bold text-white text-base truncate leading-tight">
+                    {prospect.name_project}
+                </h4>
+                <p className="text-xs font-mono text-gray-500/70 mt-0.5 uppercase tracking-wider">
+                    {prospect.no_project}
+                </p>
+            </div>
+        </div>
     )
 }
 
