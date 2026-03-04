@@ -10,16 +10,18 @@ import { formatDistanceToNow, parseISO } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
 import { cn } from '../lib/utils';
 import CircularProgress from '../components/ui/CircularProgress';
+import { AdminSelect } from '../components/ui/AdminSelect';
 
 const ProjectDetail = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { user } = useAuth();
+    const { user, token } = useAuth();
     const [project, setProject] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showAdd, setShowAdd] = useState(false); // Add Subtask Form
     const [editingLink, setEditingLink] = useState(false);
     const [projectLink, setProjectLink] = useState('');
+    const [users, setUsers] = useState([]); // All admins
 
     // New Task Form
     const [taskForm, setTaskForm] = useState({
@@ -41,17 +43,28 @@ const ProjectDetail = () => {
         }
     };
 
+    const fetchAdmins = async () => {
+        if (user?.role !== 'Superadmin') return;
+        try {
+            const res = await axios.get('http://localhost:5000/api/users', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const adminsOnly = res.data.filter(u => u.role.name === 'Admin');
+            setUsers(adminsOnly);
+        } catch (err) {
+            console.error("Failed to load admins", err);
+        }
+    };
+
     const location = useLocation();
 
     useEffect(() => {
         fetchProject();
+        fetchAdmins();
         if (location.state?.openAddSubtask) {
             setShowAdd(true);
-            // Optional: clear state to prevent reopening on refresh? 
-            // navigate(location.pathname, { replace: true, state: {} });
-            // But verify first.
         }
-    }, [id, location.state]);
+    }, [id, location.state, user, token]);
 
     const handleUpdateProjectLink = async () => {
         try {
@@ -61,6 +74,17 @@ const ProjectDetail = () => {
             fetchProject();
         } catch (error) {
             toast.error(error.response?.data?.message || 'Error updating project link: ' + error.message);
+        }
+    };
+
+    const handleAssignAdmin = async (adminIds) => {
+        try {
+            await axios.put(`/api/projects/${id}`, { adminIds });
+            toast.success("Tugas berhasil di berikan!");
+            fetchProject(); // Refresh project data to get updated admins list
+        } catch (error) {
+            console.error(error);
+            toast.error("Gagal memberikan tugas!");
         }
     };
 
@@ -82,7 +106,7 @@ const ProjectDetail = () => {
                 projectId: id,
                 ...taskForm
             });
-            toast.success('Subtask added');
+            toast.success('Tugas berhasil ditambahkan!');
             setShowAdd(false);
             setTaskForm({ name: '', deadline: '', description: '', link: '' });
             fetchProject();
@@ -168,6 +192,30 @@ const ProjectDetail = () => {
                                 ) : (
                                     <span className="text-gray-600 text-sm italic">No link added</span>
                                 )
+                            )}
+                        </div>
+
+                        {/* Assign Admins Box */}
+                        <div className="mb-6 p-4 rounded-lg bg-black/20 border border-white/5">
+                            <span className="text-xs text-gray-500 block uppercase font-bold tracking-wider mb-3">Assigned Admins</span>
+                            {user?.role === 'Superadmin' ? (
+                                <AdminSelect
+                                    allAdmins={users}
+                                    selectedAdminIds={project.admins?.map(a => a.id) || []}
+                                    onChange={handleAssignAdmin}
+                                    disabled={project.is_done}
+                                />
+                            ) : (
+                                <div className="flex flex-wrap gap-2">
+                                    {project.admins?.map((admin) => (
+                                        <span key={admin.id} className="text-xs bg-primary/20 text-primary border border-primary/20 px-3 py-1 rounded-full whitespace-nowrap">
+                                            {admin.username}
+                                        </span>
+                                    ))}
+                                    {(!project.admins || project.admins.length === 0) && (
+                                        <span className="text-sm text-gray-500 italic">Unassigned</span>
+                                    )}
+                                </div>
                             )}
                         </div>
 

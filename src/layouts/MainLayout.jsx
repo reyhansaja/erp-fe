@@ -19,7 +19,7 @@ const MainLayout = () => {
     const navItems = [
         { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', roles: ['Superadmin', 'Manager', 'Sales', 'Engineer'] },
         { icon: Users, label: 'Prospects', path: '/prospects', roles: ['Superadmin', 'Manager', 'Sales'] },
-        { icon: Briefcase, label: 'Projects', path: '/projects', roles: ['Superadmin', 'Manager', 'Engineer'] },
+        { icon: Briefcase, label: 'Projects', path: '/projects', roles: ['Superadmin', 'Admin', 'Manager', 'Engineer'] },
         { icon: CheckCircle, label: 'Project Status', path: '/project-status', roles: ['Superadmin', 'Manager', 'Engineer', 'Sales'] },
         { icon: Settings, label: 'Role Mgmt', path: '/admin', roles: ['Superadmin'] },
     ];

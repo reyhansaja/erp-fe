@@ -4,8 +4,9 @@ import { CSS } from '@dnd-kit/utilities';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Plus, ExternalLink } from 'lucide-react';
+import { AdminSelect } from './AdminSelect';
 
-export const SortableProjectRow = ({ project }) => {
+export const SortableProjectRow = ({ project, allUsers, currentUser, onAssignAdmin, isMenuOpen, onToggleMenu }) => {
     const navigate = useNavigate();
     const {
         attributes,
@@ -19,7 +20,7 @@ export const SortableProjectRow = ({ project }) => {
     const style = {
         transform: CSS.Transform.toString(transform),
         transition,
-        zIndex: isDragging ? 10 : 1,
+        zIndex: isDragging ? 50 : (isMenuOpen ? 40 : 1),
         position: 'relative',
     };
 
@@ -44,6 +45,28 @@ export const SortableProjectRow = ({ project }) => {
                         <div className="text-xs text-gray-500 font-mono">{project.prospect.no_project}</div>
                     </div>
                 </div>
+            </td>
+            <td className="py-4 px-4 overflow-visible">
+                {currentUser?.role === 'Superadmin' ? (
+                    <AdminSelect
+                        allAdmins={allUsers}
+                        selectedAdminIds={project.admins?.map(a => a.id) || []}
+                        onChange={(newAdminIds) => onAssignAdmin(project.id, newAdminIds)}
+                        disabled={project.is_done}
+                        onToggle={onToggleMenu}
+                    />
+                ) : (
+                    <div className="flex flex-wrap gap-1">
+                        {project.admins?.map((admin) => (
+                            <span key={admin.id} className="text-[10px] bg-primary/20 text-primary border border-primary/20 px-2 py-0.5 rounded-full whitespace-nowrap">
+                                {admin.username}
+                            </span>
+                        ))}
+                        {(!project.admins || project.admins.length === 0) && (
+                            <span className="text-xs text-gray-500 italic">Unassigned</span>
+                        )}
+                    </div>
+                )}
             </td>
             <td className="py-4 px-4 text-gray-300">{project.prospect.client_name}</td>
             <td className="py-4 px-4">

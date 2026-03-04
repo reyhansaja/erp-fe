@@ -17,7 +17,9 @@ import {
     verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { SortableProjectRow } from '../components/ui/SortableProjectRow';
+import { AdminSelect } from '../components/ui/AdminSelect';
 import { ExternalLink } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 const Projects = ({ doneOnly = false }) => {
     const [projects, setProjects] = useState([]);
@@ -25,7 +27,11 @@ const Projects = ({ doneOnly = false }) => {
     const [filter, setFilter] = useState('ALL'); // ALL, DONE, REAL_LOSS
     const [search, setSearch] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
+    const [users, setUsers] = useState([]); // All admins
+    const [openDropdownId, setOpenDropdownId] = useState(null); // Track which dropdown is open
+
     const navigate = useNavigate();
+    const { user, token } = useAuth();
 
     const sensors = useSensors(
         useSensor(PointerSensor),
@@ -59,8 +65,23 @@ const Projects = ({ doneOnly = false }) => {
                 setLoading(false);
             }
         };
+
+        const fetchAdmins = async () => {
+            if (user?.role !== 'Superadmin') return;
+            try {
+                const res = await axios.get('http://localhost:5000/api/users', {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                const adminsOnly = res.data.filter(u => u.role.name === 'Admin');
+                setUsers(adminsOnly);
+            } catch (err) {
+                console.error("Failed to load admins", err);
+            }
+        };
+
         fetchProjects();
-    }, [doneOnly, debouncedSearch]);
+        fetchAdmins();
+    }, [doneOnly, debouncedSearch, user, token]);
 
     const handleDragEnd = async (event) => {
         const { active, over } = event;
@@ -85,6 +106,31 @@ const Projects = ({ doneOnly = false }) => {
 
                 return newOrder;
             });
+        }
+    };
+
+    const handleAssignAdmin = async (projectId, adminIds) => {
+        try {
+            await axios.put(`/api/projects/${projectId}`, {
+                adminIds
+            });
+            toast.success("Admins assigned successfully");
+
+            // Update local state instantly 
+            setProjects(prevProjects =>
+                prevProjects.map(p => {
+                    if (p.id === projectId) {
+                        return {
+                            ...p,
+                            admins: users.filter(u => adminIds.includes(u.id))
+                        };
+                    }
+                    return p;
+                })
+            );
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to assign admins");
         }
     };
 
@@ -120,7 +166,7 @@ const Projects = ({ doneOnly = false }) => {
                 </div>
             </div>
 
-            <div className="bg-gray-900/50 rounded-xl border border-white/10 overflow-hidden">
+            <div className="bg-gray-900/50 rounded-xl border border-white/10">
                 {!doneOnly ? (
                     <DndContext
                         sensors={sensors}
@@ -128,7 +174,7 @@ const Projects = ({ doneOnly = false }) => {
                         onDragEnd={handleDragEnd}
                     >
                         <table className="w-full text-left border-collapse">
-                            <thead className="bg-white/5 text-gray-400 text-xs uppercase font-semibold">
+                            <thead className="bg-white/5 text-gray-400 text-xs uppercase font-semibold [&>tr>th:first-child]:rounded-tl-xl [&>tr>th:last-child]:rounded-tr-xl">
                                 <tr>
                                     <th className="p-4">Project</th>
                                     <th className="p-4">Client</th>
@@ -146,6 +192,11 @@ const Projects = ({ doneOnly = false }) => {
                                         <SortableProjectRow
                                             key={project.id}
                                             project={project}
+                                            allUsers={users}
+                                            currentUser={user}
+                                            onAssignAdmin={handleAssignAdmin}
+                                            isMenuOpen={openDropdownId === project.id}
+                                            onToggleMenu={(isOpen) => setOpenDropdownId(isOpen ? project.id : null)}
                                         />
                                     ))}
                                 </tbody>
@@ -175,7 +226,7 @@ const Projects = ({ doneOnly = false }) => {
                             </button>
                         </div>
                         <table className="w-full text-left border-collapse">
-                            <thead className="bg-white/5 text-gray-400 text-xs uppercase font-semibold">
+                            <thead className="bg-white/5 text-gray-400 text-xs uppercase font-semibold [&>tr>th:first-child]:rounded-tl-xl [&>tr>th:last-child]:rounded-tr-xl">
                                 <tr>
                                     <th className="p-4">Project</th>
                                     <th className="p-4">Client</th>
@@ -196,7 +247,7 @@ const Projects = ({ doneOnly = false }) => {
                                         <tr
                                             key={project.id}
                                             onClick={() => navigate(`/projects/${project.id}`)}
-                                            className="cursor-pointer border-b border-white/5 hover:bg-white/5 transition-colors"
+                                            className={`cursor-pointer border-b border-white/5 transition-colors relative ${openDropdownId === project.id ? 'z-50 hover:bg-white/10' : 'z-10 hover:z-[60] hover:bg-white/5'}`}
                                         >
                                             <td className="py-4 px-4">
                                                 <div className="flex items-center gap-3">
@@ -205,6 +256,28 @@ const Projects = ({ doneOnly = false }) => {
                                                         <div className="text-xs text-gray-500 font-mono">{project.prospect.no_project}</div>
                                                     </div>
                                                 </div>
+                                            </td>
+                                            <td className="py-4 px-4">
+                                                {user?.role === 'Superadmin' ? (
+                                                    <AdminSelect
+                                                        allAdmins={users}
+                                                        selectedAdminIds={project.admins?.map(a => a.id) || []}
+                                                        onChange={(newAdminIds) => handleAssignAdmin(project.id, newAdminIds)}
+                                                        disabled={project.is_done}
+                                                        onToggle={(isOpen) => setOpenDropdownId(isOpen ? project.id : null)}
+                                                    />
+                                                ) : (
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {project.admins?.map((admin) => (
+                                                            <span key={admin.id} className="text-[10px] bg-primary/20 text-primary border border-primary/20 px-2 py-0.5 rounded-full whitespace-nowrap">
+                                                                {admin.username}
+                                                            </span>
+                                                        ))}
+                                                        {(!project.admins || project.admins.length === 0) && (
+                                                            <span className="text-xs text-gray-500 italic">Unassigned</span>
+                                                        )}
+                                                    </div>
+                                                )}
                                             </td>
                                             <td className="py-4 px-4 text-gray-300">{project.prospect.client_name}</td>
                                             <td className="py-4 px-4">
