@@ -42,7 +42,7 @@ const KanbanColumn = ({ status, children }) => {
 };
 
 // Draggable Card Component
-const DraggableProspectCard = ({ prospect, onMoveToRealLoss }) => {
+const DraggableProspectCard = ({ prospect, onMoveToRealLoss, onEdit, onDelete, userRole }) => {
     const navigate = useNavigate();
     const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
         id: prospect.no_project,
@@ -50,13 +50,17 @@ const DraggableProspectCard = ({ prospect, onMoveToRealLoss }) => {
     });
 
     const [showMenu, setShowMenu] = useState(false);
+    const canEdit = ['Manager', 'Superadmin', 'Sales'].includes(userRole);
+    const canDelete = ['Manager', 'Superadmin'].includes(userRole);
+    const canMoveToLoss = prospect.status === 'LOSS';
+    const hasMenuOptions = canEdit || canDelete || canMoveToLoss;
 
     const style = transform ? {
         transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
     } : undefined;
 
     return (
-        <div ref={setNodeRef} style={style} className="touch-none relative group">
+        <div ref={setNodeRef} style={style} className={cn("touch-none relative group", showMenu && "z-50")}>
             <div
                 onClick={() => navigate(`/prospects/${prospect.no_project}`)}
                 className={cn(
@@ -74,7 +78,7 @@ const DraggableProspectCard = ({ prospect, onMoveToRealLoss }) => {
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 pr-6">
                     <h4 className="font-bold text-white text-base truncate leading-tight">
                         {prospect.name_project}
                     </h4>
@@ -83,26 +87,56 @@ const DraggableProspectCard = ({ prospect, onMoveToRealLoss }) => {
                     </p>
                 </div>
 
-                {/* Optional Menu for LOSS status */}
-                {prospect.status === 'LOSS' && (
-                    <div className="relative" onPointerDown={e => e.stopPropagation()}>
+                {/* Optional Menu for Actions */}
+                {hasMenuOptions && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2" onPointerDown={e => e.stopPropagation()}>
                         <button
-                            onClick={() => setShowMenu(!showMenu)}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setShowMenu(!showMenu);
+                            }}
                             className="text-gray-600 hover:text-white p-1.5 rounded-full hover:bg-white/10"
                         >
                             <MoreHorizontal size={14} />
                         </button>
                         {showMenu && (
                             <div className="absolute right-0 top-full mt-1 w-40 bg-gray-900 border border-white/10 rounded-lg shadow-xl z-50 overflow-hidden">
-                                <button
-                                    onClick={() => {
-                                        setShowMenu(false);
-                                        onMoveToRealLoss(prospect);
-                                    }}
-                                    className="w-full text-left px-4 py-2 text-sm text-danger hover:bg-white/5 transition-colors"
-                                >
-                                    Move to Real Loss
-                                </button>
+                                {canMoveToLoss && (
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setShowMenu(false);
+                                            onMoveToRealLoss(prospect);
+                                        }}
+                                        className="w-full text-left px-4 py-2 text-sm text-yellow-500 hover:bg-white/5 transition-colors"
+                                    >
+                                        Move to Real Loss
+                                    </button>
+                                )}
+                                {canEdit && (
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setShowMenu(false);
+                                            onEdit(prospect);
+                                        }}
+                                        className="w-full text-left px-4 py-2 text-sm text-white hover:bg-white/5 transition-colors border-t border-white/5"
+                                    >
+                                        Edit Prospect
+                                    </button>
+                                )}
+                                {canDelete && (
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setShowMenu(false);
+                                            onDelete(prospect);
+                                        }}
+                                        className="w-full text-left px-4 py-2 text-sm text-danger hover:bg-white/5 transition-colors border-t border-white/5"
+                                    >
+                                        Delete Prospect
+                                    </button>
+                                )}
                             </div>
                         )}
                     </div>
@@ -137,6 +171,12 @@ const Prospects = () => {
     const [prospects, setProspects] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
+    const [editingProspect, setEditingProspect] = useState(null);
+    const [editFormData, setEditFormData] = useState({
+        name_project: '',
+        client_name: '',
+        contact_name: ''
+    });
     const [activeId, setActiveId] = useState(null); // For drag overlay
 
     // Form State
@@ -150,7 +190,7 @@ const Prospects = () => {
 
     const fetchProspects = async () => {
         try {
-            const res = await axios.get('http://localhost:5000/api/prospects');
+            const res = await axios.get('/api/prospects');
             setProspects(res.data);
         } catch (error) {
             console.error("Error fetching prospects", error);
@@ -166,12 +206,23 @@ const Prospects = () => {
     const handleCreate = async (e) => {
         e.preventDefault();
         try {
-            await axios.post('http://localhost:5000/api/prospects', formData);
+            await axios.post('/api/prospects', formData);
             setShowModal(false);
             fetchProspects();
             setFormData({ no_project: '', name_project: '', client_name: '', contact_name: '', status: 'LEAD' });
         } catch (error) {
             alert('Error creating prospect');
+        }
+    };
+
+    const handleUpdate = async (e) => {
+        e.preventDefault();
+        try {
+            await axios.put(`/api/prospects/${editingProspect.no_project}`, editFormData);
+            setEditingProspect(null);
+            fetchProspects();
+        } catch (error) {
+            alert('Error updating prospect');
         }
     };
 
@@ -200,9 +251,9 @@ const Prospects = () => {
 
             // API Call
             try {
-                await axios.put(`http://localhost:5000/api/prospects/${prospectId}`, { status: newStatus });
-                // Should verify/refetch if WON to show project link? 
-                // Ideally yes, but for now simple update is fine.
+                await axios.put(`/api/prospects/${prospectId}`, { status: newStatus });
+                // Fetch prospects to get the newly created project data if transitioned to WON
+                fetchProspects();
             } catch (error) {
                 console.error("Failed to update status", error);
                 // Revert
@@ -217,11 +268,21 @@ const Prospects = () => {
         if (!confirm(`Move ${prospect.name_project} to Real Loss? This will create a 'Done' project for it.`)) return;
 
         try {
-            await axios.put(`http://localhost:5000/api/prospects/${prospect.no_project}`, { status: 'REAL_LOSS' });
+            await axios.put(`/api/prospects/${prospect.no_project}`, { status: 'REAL_LOSS' });
             fetchProspects(); // Refresh to remove from list (since REAL_LOSS isn't in STATUSES column)
         } catch (error) {
             console.error("Update failed:", error);
             alert(`Failed to update status: ${error.response?.data?.message || error.message}`);
+        }
+    };
+
+    const handleDeleteProspect = async (prospect) => {
+        if (!confirm(`Are you sure you want to delete the prospect "${prospect.name_project}"? This action cannot be undone.`)) return;
+        try {
+            await axios.delete(`/api/prospects/${prospect.no_project}`);
+            fetchProspects();
+        } catch (error) {
+            alert(error.response?.data?.message || 'Error deleting prospect');
         }
     };
 
@@ -248,6 +309,16 @@ const Prospects = () => {
                                         key={prospect.no_project}
                                         prospect={prospect}
                                         onMoveToRealLoss={handleMoveToRealLoss}
+                                        onEdit={(p) => {
+                                            setEditingProspect(p);
+                                            setEditFormData({
+                                                name_project: p.name_project,
+                                                client_name: p.client_name,
+                                                contact_name: p.contact_name
+                                            });
+                                        }}
+                                        onDelete={handleDeleteProspect}
+                                        userRole={user?.role}
                                     />
                                 ))}
                             </KanbanColumn>
@@ -282,6 +353,43 @@ const Prospects = () => {
                                         <div className="flex justify-end gap-3 mt-6">
                                             <Button type="button" variant="ghost" onClick={() => setShowModal(false)}>Cancel</Button>
                                             <Button type="submit">Create Prospect</Button>
+                                        </div>
+                                    </form>
+                                </Card>
+                            </motion.div>
+                        </div>
+                    )}
+                </AnimatePresence>
+
+                {/* Edit Prospect Modal */}
+                <AnimatePresence>
+                    {editingProspect && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.9 }}
+                                className="w-full max-w-lg"
+                            >
+                                <Card className="border-primary/50">
+                                    <h2 className="text-xl font-bold mb-4 text-white">Edit Prospect</h2>
+                                    <p className="text-xs font-mono text-gray-500 mb-6 uppercase tracking-widest">{editingProspect.no_project}</p>
+                                    <form onSubmit={handleUpdate} className="space-y-4">
+                                        <div className="space-y-1">
+                                            <label className="text-xs text-gray-500 font-bold uppercase tracking-wider">Project Name</label>
+                                            <Input placeholder="Project Name" value={editFormData.name_project} onChange={e => setEditFormData({ ...editFormData, name_project: e.target.value })} required />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-xs text-gray-500 font-bold uppercase tracking-wider">Client Name</label>
+                                            <Input placeholder="Client Name" value={editFormData.client_name} onChange={e => setEditFormData({ ...editFormData, client_name: e.target.value })} required />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-xs text-gray-500 font-bold uppercase tracking-wider">Contact Name</label>
+                                            <Input placeholder="Contact Name" value={editFormData.contact_name} onChange={e => setEditFormData({ ...editFormData, contact_name: e.target.value })} required />
+                                        </div>
+                                        <div className="flex justify-end gap-3 mt-6">
+                                            <Button type="button" variant="ghost" onClick={() => setEditingProspect(null)}>Cancel</Button>
+                                            <Button type="submit">Save Changes</Button>
                                         </div>
                                     </form>
                                 </Card>

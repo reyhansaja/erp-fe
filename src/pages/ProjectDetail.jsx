@@ -8,6 +8,7 @@ import { ArrowLeft, CheckCircle, Circle, Plus, Trash2, ExternalLink, Edit2, Save
 import { formatDistanceToNow, parseISO } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
 import { cn } from '../lib/utils';
+import CircularProgress from '../components/ui/CircularProgress';
 
 const ProjectDetail = () => {
     const { id } = useParams();
@@ -29,7 +30,7 @@ const ProjectDetail = () => {
 
     const fetchProject = async () => {
         try {
-            const res = await axios.get(`http://localhost:5000/api/projects/${id}`);
+            const res = await axios.get(`/api/projects/${id}`);
             setProject(res.data);
             setProjectLink(res.data.link || '');
         } catch (error) {
@@ -53,7 +54,7 @@ const ProjectDetail = () => {
 
     const handleUpdateProjectLink = async () => {
         try {
-            await axios.put(`http://localhost:5000/api/projects/${id}`, { link: projectLink });
+            await axios.put(`/api/projects/${id}`, { link: projectLink });
             setEditingLink(false);
             fetchProject();
         } catch (error) {
@@ -64,7 +65,7 @@ const ProjectDetail = () => {
     const handleToggleStatus = async () => {
         try {
             const newStatus = !project.is_done;
-            await axios.put(`http://localhost:5000/api/projects/${id}`, { is_done: newStatus });
+            await axios.put(`/api/projects/${id}`, { is_done: newStatus });
             fetchProject();
         } catch (error) {
             alert('Error updating project status');
@@ -74,7 +75,7 @@ const ProjectDetail = () => {
     const handleAddTask = async (e) => {
         e.preventDefault();
         try {
-            await axios.post('http://localhost:5000/api/projects/subtasks', {
+            await axios.post('/api/projects/subtasks', {
                 projectId: id,
                 ...taskForm
             });
@@ -88,7 +89,7 @@ const ProjectDetail = () => {
 
     const updateProgress = async (taskId, newProgress) => {
         try {
-            await axios.put(`http://localhost:5000/api/projects/subtasks/${taskId}`, {
+            await axios.put(`/api/projects/subtasks/${taskId}`, {
                 progress: newProgress
             });
             fetchProject();
@@ -100,7 +101,7 @@ const ProjectDetail = () => {
     const deleteTask = async (taskId) => {
         if (!confirm('Delete this task?')) return;
         try {
-            await axios.delete(`http://localhost:5000/api/projects/subtasks/${taskId}`);
+            await axios.delete(`/api/projects/subtasks/${taskId}`);
             fetchProject();
         } catch (error) {
             alert('Error deleting task');
@@ -187,13 +188,16 @@ const ProjectDetail = () => {
                                     </Button>
                                 )}
                             </div>
-                            <div>
-                                <div className="flex justify-between text-sm mb-1">
-                                    <span>Overall Progress</span>
-                                    <span>{project.progress}%</span>
-                                </div>
-                                <div className="h-2 w-full bg-gray-800 rounded-full overflow-hidden">
-                                    <div className={`h-full transition-all duration-500 ${project.progress === 100 ? 'bg-success' : 'bg-primary'}`} style={{ width: `${project.progress}%` }} />
+                            <div className="flex items-center gap-4 bg-black/20 p-4 rounded-xl border border-white/5">
+                                <CircularProgress progress={project.progress} size={60} strokeWidth={6} />
+                                <div>
+                                    <span className="text-[10px] text-gray-500 block uppercase font-bold tracking-widest mb-0.5">Overall Progress</span>
+                                    <span className={cn(
+                                        "text-xl font-bold",
+                                        project.progress === 100 ? "text-success" : "text-white"
+                                    )}>
+                                        {project.progress === 100 ? 'Fully Completed' : `${project.progress}% Done`}
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -264,7 +268,11 @@ const ProjectDetail = () => {
                                             </div>
                                         </div>
 
-                                        <div className="w-full lg:w-48 flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
+                                        <div className="flex flex-col items-center justify-center bg-black/20 p-2 rounded-xl border border-white/5 min-w-[70px]">
+                                            <CircularProgress progress={task.progress} size={48} strokeWidth={4} />
+                                        </div>
+
+                                        <div className="flex-1 w-full lg:w-48 flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
                                             <div className="flex justify-between items-center">
                                                 <span className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Progress Status</span>
                                                 <span className={cn(
@@ -315,9 +323,6 @@ const ProjectDetail = () => {
                                             )}
                                         </div>
                                     </div>
-
-                                    {/* Full green bar if 100% */}
-                                    <div className={`absolute bottom-0 left-0 h-1 transition-all duration-500 ${task.progress === 100 ? 'bg-success w-full' : 'bg-primary'}`} style={{ width: `${task.progress}%` }} />
                                 </Card>
                             );
                         })}
@@ -327,7 +332,7 @@ const ProjectDetail = () => {
                     </div>
                 </div>
             </div>
-        </div >
+        </div>
     );
 };
 

@@ -8,6 +8,7 @@ import { ArrowLeft, Save, ExternalLink, Clock, User, CheckCircle } from 'lucide-
 import { format } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
 import { cn } from '../lib/utils';
+import CircularProgress from '../components/ui/CircularProgress';
 
 const SubtaskDetail = () => {
     const { projectId, subtaskId } = useParams();
@@ -26,12 +27,12 @@ const SubtaskDetail = () => {
 
     const fetchSubtask = async () => {
         try {
-            const res = await axios.get(`http://localhost:5000/api/projects/subtasks/${subtaskId}`);
+            const res = await axios.get(`/api/projects/subtasks/${subtaskId}`);
             setSubtask(res.data);
             setFormData({
                 name: res.data.name,
                 description: res.data.description || '',
-                deadline: new Date(res.data.deadline).toISOString().slice(0, 16),
+                deadline: res.data.deadline ? format(new Date(res.data.deadline), "yyyy-MM-dd'T'HH:mm") : '',
                 progress: res.data.progress,
                 link: res.data.link || ''
             });
@@ -49,7 +50,7 @@ const SubtaskDetail = () => {
     const handleUpdate = async (e) => {
         e.preventDefault();
         try {
-            await axios.put(`http://localhost:5000/api/projects/subtasks/${subtaskId}`, formData);
+            await axios.put(`/api/projects/subtasks/${subtaskId}`, formData);
             setIsEditing(false);
             fetchSubtask();
         } catch (error) {
@@ -64,10 +65,16 @@ const SubtaskDetail = () => {
         <div className="max-w-4xl mx-auto">
             <Button
                 variant="ghost"
-                onClick={() => navigate(`/projects/${projectId}`)}
+                onClick={() => {
+                    if (projectId === 'prospect' && subtask.prospectId) {
+                        navigate(`/prospects/${subtask.prospectId}`);
+                    } else {
+                        navigate(`/projects/${projectId}`);
+                    }
+                }}
                 className="mb-6 gap-2 text-gray-400 hover:text-white"
             >
-                <ArrowLeft size={16} /> Back to Project
+                <ArrowLeft size={16} /> Back to {projectId === 'prospect' ? 'Prospect' : 'Project'}
             </Button>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -122,21 +129,7 @@ const SubtaskDetail = () => {
                         <h3 className="text-lg font-bold text-white mb-4">Task Management</h3>
 
                         <form onSubmit={handleUpdate} className="space-y-6">
-                            <div className="space-y-3">
-                                <div className="flex justify-between items-center text-sm">
-                                    <span className="text-gray-400 font-bold uppercase tracking-wider text-[10px]">Progress Status</span>
-                                    <span className={cn(
-                                        "font-bold text-xs px-2 py-0.5 rounded",
-                                        formData.progress === 100 ? "text-success bg-success/10" : "text-primary bg-primary/10"
-                                    )}>
-                                        {formData.progress === 100 ? 'DONE' :
-                                            formData.progress === 80 ? 'IFC' :
-                                                formData.progress === 60 ? 'IFA' :
-                                                    formData.progress === 40 ? 'IFR' :
-                                                        formData.progress === 20 ? 'IFI' : 'NEW'}
-                                    </span>
-                                </div>
-
+                            <div className="space-y-6">
                                 {/* Status Selector Buttons */}
                                 <div className="grid grid-cols-1 gap-2">
                                     {[
@@ -162,15 +155,20 @@ const SubtaskDetail = () => {
                                     ))}
                                 </div>
 
-                                <div className="pt-2">
-                                    <div className="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden">
-                                        <div
-                                            className={cn(
-                                                "h-full transition-all duration-500",
-                                                formData.progress === 100 ? "bg-success" : "bg-primary"
-                                            )}
-                                            style={{ width: `${formData.progress}%` }}
-                                        />
+                                <div className="flex flex-col items-center justify-center bg-black/20 p-6 rounded-2xl border border-white/5 space-y-4">
+                                    <CircularProgress progress={formData.progress} size={100} strokeWidth={8} className="scale-125" />
+                                    <div className="text-center">
+                                        <p className="text-[10px] text-gray-500 uppercase font-bold tracking-[0.2em] mb-1">Current Status</p>
+                                        <p className={cn(
+                                            "text-2xl font-black italic",
+                                            formData.progress === 100 ? "text-success" : "text-primary text-glow"
+                                        )}>
+                                            {formData.progress === 100 ? 'SUCCESS' :
+                                                formData.progress === 80 ? 'IFC' :
+                                                    formData.progress === 60 ? 'IFA' :
+                                                        formData.progress === 40 ? 'IFR' :
+                                                            formData.progress === 20 ? 'IFI' : 'DRAFT'}
+                                        </p>
                                     </div>
                                 </div>
                             </div>

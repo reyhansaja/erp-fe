@@ -4,10 +4,11 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
-import { ArrowLeft, CheckCircle, Plus, Trash2, ExternalLink, Save } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Plus, Trash2, ExternalLink, Save, Pencil, X } from 'lucide-react';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
 import { cn } from '../lib/utils';
+import CircularProgress from '../components/ui/CircularProgress';
 
 const ProspectDetail = () => {
     const { id } = useParams(); // id is no_project
@@ -16,6 +17,12 @@ const ProspectDetail = () => {
     const [prospect, setProspect] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showAdd, setShowAdd] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editForm, setEditForm] = useState({
+        name_project: '',
+        client_name: '',
+        contact_name: ''
+    });
 
     const [taskForm, setTaskForm] = useState({
         name: '',
@@ -26,8 +33,13 @@ const ProspectDetail = () => {
 
     const fetchProspect = async () => {
         try {
-            const res = await axios.get(`http://localhost:5000/api/prospects/${id}`);
+            const res = await axios.get(`/api/prospects/${id}`);
             setProspect(res.data);
+            setEditForm({
+                name_project: res.data.name_project,
+                client_name: res.data.client_name,
+                contact_name: res.data.contact_name
+            });
         } catch (error) {
             console.error(error);
         } finally {
@@ -42,7 +54,7 @@ const ProspectDetail = () => {
     const handleAddTask = async (e) => {
         e.preventDefault();
         try {
-            await axios.post('http://localhost:5000/api/projects/subtasks', {
+            await axios.post('/api/projects/subtasks', {
                 prospectId: id,
                 ...taskForm
             });
@@ -56,7 +68,7 @@ const ProspectDetail = () => {
 
     const updateProgress = async (taskId, newProgress) => {
         try {
-            await axios.put(`http://localhost:5000/api/projects/subtasks/${taskId}`, {
+            await axios.put(`/api/projects/subtasks/${taskId}`, {
                 progress: newProgress
             });
             fetchProspect();
@@ -68,12 +80,33 @@ const ProspectDetail = () => {
     const deleteTask = async (taskId) => {
         if (!confirm('Delete this task?')) return;
         try {
-            await axios.delete(`http://localhost:5000/api/projects/subtasks/${taskId}`);
+            await axios.delete(`/api/projects/subtasks/${taskId}`);
             fetchProspect();
         } catch (error) {
             alert('Error deleting task');
         }
     }
+
+    const handleDeleteProspect = async () => {
+        if (!confirm('Are you sure you want to delete this prospect? This action cannot be undone.')) return;
+        try {
+            await axios.delete(`/api/prospects/${id}`);
+            navigate('/prospects');
+        } catch (error) {
+            alert(error.response?.data?.message || 'Error deleting prospect');
+        }
+    };
+
+    const handleUpdateProspect = async (e) => {
+        e.preventDefault();
+        try {
+            await axios.put(`/api/prospects/${id}`, editForm);
+            setIsEditing(false);
+            fetchProspect();
+        } catch (error) {
+            alert(error.response?.data?.message || 'Error updating prospect');
+        }
+    };
 
     if (loading || !prospect) return <div className="text-white p-8">Loading...</div>;
 
@@ -87,16 +120,72 @@ const ProspectDetail = () => {
                 {/* Left Column: Prospect Info */}
                 <div className="lg:col-span-1">
                     <Card className="sticky top-8 bg-white/5 border-white/10 backdrop-blur-xl">
-                        <div className="mb-6">
+                        <div className="mb-6 relative">
                             <span className={cn(
                                 "text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-widest mb-2 inline-block",
                                 prospect.status === 'WON' ? "text-success bg-success/10" : "text-primary bg-primary/10"
                             )}>
                                 Prospect {prospect.status}
                             </span>
-                            <h1 className="text-3xl font-bold text-white mb-2 leading-tight">{prospect.name_project}</h1>
-                            <p className="text-gray-400 font-medium">{prospect.client_name}</p>
-                            <p className="text-xs font-mono text-gray-500 mt-1">{prospect.no_project}</p>
+
+                            {['Manager', 'Superadmin', 'Sales'].includes(user?.role) && (
+                                <div className="absolute top-0 right-0 flex gap-1">
+                                    <button
+                                        onClick={() => setIsEditing(!isEditing)}
+                                        className="text-gray-500 hover:text-primary p-2 rounded-lg hover:bg-primary/10 transition-colors"
+                                        title="Edit Prospect"
+                                    >
+                                        {isEditing ? <X size={16} /> : <Pencil size={16} />}
+                                    </button>
+                                    {['Manager', 'Superadmin'].includes(user?.role) && (
+                                        <button
+                                            onClick={handleDeleteProspect}
+                                            className="text-gray-500 hover:text-danger p-2 rounded-lg hover:bg-danger/10 transition-colors"
+                                            title="Delete Prospect"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+
+                            {isEditing ? (
+                                <form onSubmit={handleUpdateProspect} className="space-y-4 pt-4">
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">Project Name</label>
+                                        <Input
+                                            value={editForm.name_project}
+                                            onChange={e => setEditForm({ ...editForm, name_project: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">Client Name</label>
+                                        <Input
+                                            value={editForm.client_name}
+                                            onChange={e => setEditForm({ ...editForm, client_name: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">Contact Name</label>
+                                        <Input
+                                            value={editForm.contact_name}
+                                            onChange={e => setEditForm({ ...editForm, contact_name: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+                                    <Button type="submit" className="w-full gap-2 mt-4" size="sm">
+                                        <Save size={14} /> Save Changes
+                                    </Button>
+                                </form>
+                            ) : (
+                                <>
+                                    <h1 className="text-3xl font-bold text-white mb-2 leading-tight pr-8">{prospect.name_project}</h1>
+                                    <p className="text-gray-400 font-medium">{prospect.client_name}</p>
+                                    <p className="text-xs font-mono text-gray-500 mt-1">{prospect.no_project}</p>
+                                </>
+                            )}
                         </div>
 
                         <div className="space-y-6 pt-6 border-t border-white/5">
@@ -178,6 +267,10 @@ const ProspectDetail = () => {
                                             </div>
                                         </div>
 
+                                        <div className="flex flex-col items-center justify-center bg-black/20 p-2 rounded-xl border border-white/5 min-w-[70px]">
+                                            <CircularProgress progress={task.progress} size={48} strokeWidth={4} />
+                                        </div>
+
                                         <div className="w-full lg:w-48 flex flex-col gap-3" onClick={(e) => e.stopPropagation()}>
                                             <div className="flex justify-between items-center mb-1">
                                                 <span className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Status</span>
@@ -227,7 +320,6 @@ const ProspectDetail = () => {
                                             )}
                                         </div>
                                     </div>
-                                    <div className={`absolute bottom-0 left-0 h-1 transition-all duration-700 ease-out ${task.progress === 100 ? 'bg-success shadow-[0_0_10px_rgba(var(--success-rgb),0.5)]' : 'bg-primary'}`} style={{ width: `${task.progress}%` }} />
                                 </Card>
                             );
                         })}
