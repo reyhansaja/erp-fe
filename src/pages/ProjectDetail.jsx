@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { toast } from 'react-toastify';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -56,9 +57,10 @@ const ProjectDetail = () => {
         try {
             await axios.put(`/api/projects/${id}`, { link: projectLink });
             setEditingLink(false);
+            toast.success('Project link updated');
             fetchProject();
         } catch (error) {
-            alert(error.response?.data?.message || 'Error updating project link: ' + error.message);
+            toast.error(error.response?.data?.message || 'Error updating project link: ' + error.message);
         }
     };
 
@@ -66,9 +68,10 @@ const ProjectDetail = () => {
         try {
             const newStatus = !project.is_done;
             await axios.put(`/api/projects/${id}`, { is_done: newStatus });
+            toast.success(`Project ${newStatus ? 'completed' : 'reopened'}`);
             fetchProject();
         } catch (error) {
-            alert('Error updating project status');
+            toast.error('Error updating project status');
         }
     };
 
@@ -79,11 +82,12 @@ const ProjectDetail = () => {
                 projectId: id,
                 ...taskForm
             });
+            toast.success('Subtask added');
             setShowAdd(false);
             setTaskForm({ name: '', deadline: '', description: '', link: '' });
             fetchProject();
         } catch (error) {
-            alert(error.response?.data?.message || 'Error adding task');
+            toast.error(error.response?.data?.message || 'Error adding task');
         }
     };
 
@@ -92,9 +96,10 @@ const ProjectDetail = () => {
             await axios.put(`/api/projects/subtasks/${taskId}`, {
                 progress: newProgress
             });
+            toast.success('Progress updated');
             fetchProject();
         } catch (error) {
-            alert('Error updating progress');
+            toast.error('Error updating progress');
         }
     };
 
@@ -102,9 +107,10 @@ const ProjectDetail = () => {
         if (!confirm('Delete this task?')) return;
         try {
             await axios.delete(`/api/projects/subtasks/${taskId}`);
+            toast.success('Task deleted');
             fetchProject();
         } catch (error) {
-            alert('Error deleting task');
+            toast.error('Error deleting task');
         }
     }
 
@@ -314,12 +320,18 @@ const ProjectDetail = () => {
                                             </div>
 
                                             {['Manager', 'Superadmin'].includes(user?.role) && (
-                                                <button
-                                                    onClick={() => deleteTask(task.id)}
-                                                    className="self-end text-gray-600 hover:text-danger p-1 transition-colors"
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        deleteTask(task.id);
+                                                    }}
+                                                    className="self-end text-gray-600 hover:text-danger p-1 transition-colors h-8 w-8"
                                                 >
                                                     <Trash2 size={14} />
-                                                </button>
+                                                </Button>
                                             )}
                                         </div>
                                     </div>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { toast } from 'react-toastify';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -51,10 +52,11 @@ const SubtaskDetail = () => {
         e.preventDefault();
         try {
             await axios.put(`/api/projects/subtasks/${subtaskId}`, formData);
+            toast.success('Subtask updated successfully');
             setIsEditing(false);
             fetchSubtask();
         } catch (error) {
-            alert('Error updating subtask');
+            toast.error('Error updating subtask');
         }
     };
 

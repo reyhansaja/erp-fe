@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { toast } from 'react-toastify';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -58,11 +59,12 @@ const ProspectDetail = () => {
                 prospectId: id,
                 ...taskForm
             });
+            toast.success('Subtask created successfully');
             setShowAdd(false);
             setTaskForm({ name: '', deadline: '', description: '', link: '' });
             fetchProspect();
         } catch (error) {
-            alert(error.response?.data?.message || 'Error adding task');
+            toast.error(error.response?.data?.message || 'Error adding task');
         }
     };
 
@@ -71,9 +73,10 @@ const ProspectDetail = () => {
             await axios.put(`/api/projects/subtasks/${taskId}`, {
                 progress: newProgress
             });
+            toast.success('Progress updated');
             fetchProspect();
         } catch (error) {
-            alert('Error updating progress');
+            toast.error('Error updating progress');
         }
     };
 
@@ -81,9 +84,10 @@ const ProspectDetail = () => {
         if (!confirm('Delete this task?')) return;
         try {
             await axios.delete(`/api/projects/subtasks/${taskId}`);
+            toast.success('Task deleted');
             fetchProspect();
         } catch (error) {
-            alert('Error deleting task');
+            toast.error('Error deleting task');
         }
     }
 
@@ -91,9 +95,10 @@ const ProspectDetail = () => {
         if (!confirm('Are you sure you want to delete this prospect? This action cannot be undone.')) return;
         try {
             await axios.delete(`/api/prospects/${id}`);
+            toast.success('Prospect deleted');
             navigate('/prospects');
         } catch (error) {
-            alert(error.response?.data?.message || 'Error deleting prospect');
+            toast.error(error.response?.data?.message || 'Error deleting prospect');
         }
     };
 
@@ -101,10 +106,11 @@ const ProspectDetail = () => {
         e.preventDefault();
         try {
             await axios.put(`/api/prospects/${id}`, editForm);
+            toast.success('Prospect updated');
             setIsEditing(false);
             fetchProspect();
         } catch (error) {
-            alert(error.response?.data?.message || 'Error updating prospect');
+            toast.error(error.response?.data?.message || 'Error updating prospect');
         }
     };
 
@@ -130,21 +136,27 @@ const ProspectDetail = () => {
 
                             {['Manager', 'Superadmin', 'Sales'].includes(user?.role) && (
                                 <div className="absolute top-0 right-0 flex gap-1">
-                                    <button
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        type="button"
                                         onClick={() => setIsEditing(!isEditing)}
-                                        className="text-gray-500 hover:text-primary p-2 rounded-lg hover:bg-primary/10 transition-colors"
+                                        className="text-gray-500 hover:text-primary transition-colors h-8 w-8"
                                         title="Edit Prospect"
                                     >
                                         {isEditing ? <X size={16} /> : <Pencil size={16} />}
-                                    </button>
+                                    </Button>
                                     {['Manager', 'Superadmin'].includes(user?.role) && (
-                                        <button
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            type="button"
                                             onClick={handleDeleteProspect}
-                                            className="text-gray-500 hover:text-danger p-2 rounded-lg hover:bg-danger/10 transition-colors"
+                                            className="text-gray-500 hover:text-danger transition-colors h-8 w-8"
                                             title="Delete Prospect"
                                         >
                                             <Trash2 size={16} />
-                                        </button>
+                                        </Button>
                                     )}
                                 </div>
                             )}
@@ -311,12 +323,18 @@ const ProspectDetail = () => {
                                             </div>
 
                                             {['Manager', 'Superadmin'].includes(user?.role) && (
-                                                <button
-                                                    onClick={() => deleteTask(task.id)}
-                                                    className="self-end text-gray-600 hover:text-danger p-2 transition-colors rounded-lg hover:bg-danger/10"
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        deleteTask(task.id);
+                                                    }}
+                                                    className="self-end text-gray-600 hover:text-danger transition-colors h-8 w-8 hover:bg-danger/10"
                                                 >
                                                     <Trash2 size={14} />
-                                                </button>
+                                                </Button>
                                             )}
                                         </div>
                                     </div>

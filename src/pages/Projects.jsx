@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 import {
     DndContext,
@@ -76,7 +77,11 @@ const Projects = ({ doneOnly = false }) => {
                 const orderedIds = newOrder.map(p => p.id);
 
                 axios.put('/api/projects/reorder', { orderedIds })
-                    .catch(err => console.error("Failed to save order", err));
+                    .then(() => toast.success('Order saved'))
+                    .catch(err => {
+                        console.error("Failed to save order", err);
+                        toast.error("Failed to save order");
+                    });
 
                 return newOrder;
             });

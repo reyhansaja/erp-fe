@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Card } from '../components/ui/Card';
@@ -103,6 +104,8 @@ const DraggableProspectCard = ({ prospect, onMoveToRealLoss, onEdit, onDelete, u
                             <div className="absolute right-0 top-full mt-1 w-40 bg-gray-900 border border-white/10 rounded-lg shadow-xl z-50 overflow-hidden">
                                 {canMoveToLoss && (
                                     <button
+                                        type="button"
+                                        onPointerDown={(e) => e.stopPropagation()}
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             setShowMenu(false);
@@ -115,6 +118,8 @@ const DraggableProspectCard = ({ prospect, onMoveToRealLoss, onEdit, onDelete, u
                                 )}
                                 {canEdit && (
                                     <button
+                                        type="button"
+                                        onPointerDown={(e) => e.stopPropagation()}
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             setShowMenu(false);
@@ -127,7 +132,10 @@ const DraggableProspectCard = ({ prospect, onMoveToRealLoss, onEdit, onDelete, u
                                 )}
                                 {canDelete && (
                                     <button
+                                        type="button"
+                                        onPointerDown={(e) => e.stopPropagation()}
                                         onClick={(e) => {
+                                            e.preventDefault();
                                             e.stopPropagation();
                                             setShowMenu(false);
                                             onDelete(prospect);
@@ -207,11 +215,12 @@ const Prospects = () => {
         e.preventDefault();
         try {
             await axios.post('/api/prospects', formData);
+            toast.success('Prospect created');
             setShowModal(false);
             fetchProspects();
             setFormData({ no_project: '', name_project: '', client_name: '', contact_name: '', status: 'LEAD' });
         } catch (error) {
-            alert('Error creating prospect');
+            toast.error('Error creating prospect');
         }
     };
 
@@ -219,10 +228,11 @@ const Prospects = () => {
         e.preventDefault();
         try {
             await axios.put(`/api/prospects/${editingProspect.no_project}`, editFormData);
+            toast.success('Prospect updated');
             setEditingProspect(null);
             fetchProspects();
         } catch (error) {
-            alert('Error updating prospect');
+            toast.error('Error updating prospect');
         }
     };
 
@@ -251,10 +261,11 @@ const Prospects = () => {
 
             // API Call
             try {
+                toast.success('Status updated');
                 await axios.put(`/api/prospects/${prospectId}`, { status: newStatus });
-                // Fetch prospects to get the newly created project data if transitioned to WON
                 fetchProspects();
             } catch (error) {
+                toast.error("Failed to update status");
                 console.error("Failed to update status", error);
                 // Revert
                 setProspects(prev => prev.map(p =>
@@ -269,10 +280,11 @@ const Prospects = () => {
 
         try {
             await axios.put(`/api/prospects/${prospect.no_project}`, { status: 'REAL_LOSS' });
+            toast.success('Moved to Real Loss');
             fetchProspects(); // Refresh to remove from list (since REAL_LOSS isn't in STATUSES column)
         } catch (error) {
             console.error("Update failed:", error);
-            alert(`Failed to update status: ${error.response?.data?.message || error.message}`);
+            toast.error(`Failed to update status: ${error.response?.data?.message || error.message}`);
         }
     };
 
@@ -280,9 +292,10 @@ const Prospects = () => {
         if (!confirm(`Are you sure you want to delete the prospect "${prospect.name_project}"? This action cannot be undone.`)) return;
         try {
             await axios.delete(`/api/prospects/${prospect.no_project}`);
+            toast.success('Prospect deleted');
             fetchProspects();
         } catch (error) {
-            alert(error.response?.data?.message || 'Error deleting prospect');
+            toast.error(error.response?.data?.message || 'Error deleting prospect');
         }
     };
 
